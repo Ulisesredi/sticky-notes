@@ -1,6 +1,6 @@
 import { Profiler, StrictMode, useReducer, useRef } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { StickyNote } from "../components/notes/StickyNote";
+import { StickyNote } from "../components/StickyNote/StickyNote";
 import { notesReducer } from "../model/notes.reducer";
 import { NoteGeometry } from "../model/notes.types";
 
