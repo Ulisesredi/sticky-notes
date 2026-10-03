@@ -9,6 +9,7 @@ export type NoteGeometry = {
 
 export type NoteDraft = { content: string; color: NoteColor };
 export type Note = NoteGeometry & NoteDraft & { id: string };
+export type NotesSnapshot = { version: number; notes: Note[] };
 
 export const NOTES_STORAGE_KEY = "sticky-notes:notes";
 
@@ -25,14 +26,24 @@ export function isNote(value: unknown): value is Note {
       note.color === "#dce6bd" || note.color === "#eadcc7");
 }
 
-export function loadNotes(): Note[] {
+export function loadNotesSnapshot(): NotesSnapshot {
   try {
     const stored = window.localStorage.getItem(NOTES_STORAGE_KEY);
-    if (stored === null) return [];
+    if (stored === null) return { version: 0, notes: [] };
     const parsed: unknown = JSON.parse(stored);
-    return Array.isArray(parsed) && parsed.every(isNote) ? parsed : [];
+    if (Array.isArray(parsed) && parsed.every(isNote)) {
+      return { version: 0, notes: parsed };
+    }
+    if (typeof parsed === "object" && parsed !== null) {
+      const snapshot = parsed as Record<string, unknown>;
+      if (Number.isInteger(snapshot.version) && (snapshot.version as number) >= 0 &&
+          Array.isArray(snapshot.notes) && snapshot.notes.every(isNote)) {
+        return { version: snapshot.version as number, notes: snapshot.notes };
+      }
+    }
+    return { version: 0, notes: [] };
   } catch {
-    return [];
+    return { version: 0, notes: [] };
   }
 }
 

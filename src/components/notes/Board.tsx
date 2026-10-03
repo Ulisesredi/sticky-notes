@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { notesReducer } from "../../model/notes.reducer";
-import { loadNotes, NOTES_STORAGE_KEY, NoteDraft, NoteGeometry } from "../../model/notes.types";
+import { loadNotesSnapshot, NOTES_STORAGE_KEY, NoteDraft, NoteGeometry } from "../../model/notes.types";
+import { saveNotesToMockApi } from "../../services/notesApi";
 import { StickyNote } from "./StickyNote";
 import { TrashZone } from "./TrashZone";
 import { CreateNoteModal } from "./CreateNoteModal";
@@ -10,24 +11,36 @@ import "./Board.css";
 type ModalState = { type: "create" } | { type: "edit"; noteId: string };
 
 export function Board() {
-  const [notes, dispatch] = useReducer(notesReducer, undefined, loadNotes);
+  const [initialSnapshot] = useState(loadNotesSnapshot);
+  const [notes, dispatch] = useReducer(notesReducer, initialSnapshot.notes);
   const persistedNotesRef = useRef(notes);
+  const versionRef = useRef(initialSnapshot.version);
   const boardRef = useRef<HTMLDivElement>(null);
   const trashRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [trashActive, setTrashActive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const pendingSavesRef = useRef(0);
   const interactionLockRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (notes === persistedNotesRef.current) return;
     const timeoutId = window.setTimeout(() => {
+      const snapshot = { version: versionRef.current + 1, notes };
+      versionRef.current = snapshot.version;
+      pendingSavesRef.current += 1;
+      setIsSaving(true);
       try {
-        window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+        window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(snapshot));
         persistedNotesRef.current = notes;
       } catch {
         // Storage can be unavailable or full; keep the in-memory board usable.
       }
+      void saveNotesToMockApi(snapshot).catch(() => undefined).finally(() => {
+        pendingSavesRef.current -= 1;
+        setIsSaving(pendingSavesRef.current > 0);
+      });
     }, 1000);
     return () => window.clearTimeout(timeoutId);
   }, [notes]);
@@ -106,6 +119,14 @@ export function Board() {
       )}
       {editedNote && (
         <CreateNoteModal mode="edit" note={editedNote} onSave={updateNote} onClose={() => setModal(null)} />
+      )}
+      {isSaving && (
+        <div className="save-status" role="status" aria-live="polite">
+          <span>Saving changes</span>
+          <span className="save-status__dots" aria-hidden="true">
+            <span>.</span><span>.</span><span>.</span>
+          </span>
+        </div>
       )}
     </main>
   );
