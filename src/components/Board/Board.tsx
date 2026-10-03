@@ -11,11 +11,11 @@ import { StickyNote } from "../StickyNote/StickyNote";
 import { TrashZone } from "../TrashZone/TrashZone";
 import { CreateNoteModal } from "../CreateNoteModal/CreateNoteModal";
 import { SavingFeedback } from "../common/SavingFeedback";
-import { getInitialGeometry } from "../../utils/geometry";
+import { getInitialGeometry, MIN_NOTE_SIZE, Size } from "../../utils/geometry";
 import "./Board.css";
 
 type ModalState =
-  | { type: "create"; geometry: NoteGeometry; maxX: number; maxY: number }
+  | { type: "create"; geometry: NoteGeometry; bounds: Size }
   | { type: "edit"; noteId: string };
 
 export function Board() {
@@ -82,24 +82,27 @@ export function Board() {
     setModal({
       type: "create",
       geometry,
-      maxX: bounds.width - geometry.width,
-      maxY: bounds.height - geometry.height,
+      bounds,
     });
   }
 
-  function createNote(draft: NoteDraft & Pick<NoteGeometry, "x" | "y">) {
+  function createNote(draft: NoteDraft & NoteGeometry) {
     const board = boardRef.current;
     if (!board) return;
     const bounds = { width: board.clientWidth, height: board.clientHeight };
-    const geometry = getInitialGeometry(window.innerHeight, bounds, notes);
+    const minWidth = Math.min(MIN_NOTE_SIZE.width, bounds.width);
+    const minHeight = Math.min(MIN_NOTE_SIZE.height, bounds.height);
+    const width = Math.min(Math.max(draft.width, minWidth), bounds.width);
+    const height = Math.min(Math.max(draft.height, minHeight), bounds.height);
     dispatch({
       type: "note/created",
       note: {
         id: crypto.randomUUID(),
         ...draft,
-        ...geometry,
-        x: Math.max(0, Math.min(draft.x, bounds.width - geometry.width)),
-        y: Math.max(0, Math.min(draft.y, bounds.height - geometry.height)),
+        width,
+        height,
+        x: Math.max(0, Math.min(draft.x, bounds.width - width)),
+        y: Math.max(0, Math.min(draft.y, bounds.height - height)),
       },
     });
     setModal(null);
@@ -171,8 +174,7 @@ export function Board() {
         <CreateNoteModal
           mode="create"
           initialGeometry={modal.geometry}
-          maxX={modal.maxX}
-          maxY={modal.maxY}
+          boardBounds={modal.bounds}
           onCreate={createNote}
           onClose={() => setModal(null)}
         />

@@ -12,7 +12,7 @@ A simple desktop sticky-note board for capturing and arranging ideas. Create not
 - Restore notes after a reload using browser storage. Changes are saved after a one-second pause; a status message appears while saving.
 - Send the same versioned note snapshot to an asynchronous mock API. The mock runs in the browser and keeps data in memory, so it is for demonstration and does not replace a server.
 
-The board is designed for desktop screens of 1024 × 768 pixels or larger. New notes use a square size equal to 25% of the viewport height, limited by the available board space. Coordinates are measured from the board's top-left corner.
+The board is designed for desktop screens of 1024 × 768 pixels or larger. New notes default to a square size equal to 25% of the viewport height, limited by the available board space; width and height can be changed in the creation dialog. Coordinates are measured from the board's top-left corner.
 
 ## Getting started
 

@@ -1,14 +1,14 @@
 import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { NOTE_COLORS, NoteColor } from "../../model/notes.colors";
 import { Note, NoteDraft, NoteGeometry } from "../../model/notes.types";
+import { Size } from "../../utils/geometry";
 import "./CreateNoteModal.css";
 
 type CreateProps = {
   mode: "create";
   initialGeometry: NoteGeometry;
-  maxX: number;
-  maxY: number;
-  onCreate: (draft: NoteDraft & Pick<NoteGeometry, "x" | "y">) => void;
+  boardBounds: Size;
+  onCreate: (draft: NoteDraft & NoteGeometry) => void;
   onClose: () => void;
 };
 type EditProps = { mode: "edit"; note: Note; onSave: (id: string, draft: NoteDraft) => void; onClose: () => void };
@@ -23,6 +23,8 @@ export function CreateNoteModal(props: Props) {
   );
   const [x, setX] = useState(() => props.mode === "create" ? String(props.initialGeometry.x) : "");
   const [y, setY] = useState(() => props.mode === "create" ? String(props.initialGeometry.y) : "");
+  const [width, setWidth] = useState(() => props.mode === "create" ? String(props.initialGeometry.width) : "");
+  const [height, setHeight] = useState(() => props.mode === "create" ? String(props.initialGeometry.height) : "");
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -38,10 +40,22 @@ export function CreateNoteModal(props: Props) {
     if (!normalizedContent) return;
     const draft = { content: normalizedContent, color };
     if (props.mode === "edit") props.onSave(props.note.id, draft);
-    else props.onCreate({ ...draft, x: Number(x), y: Number(y) });
+    else props.onCreate({
+      ...draft,
+      x: Number(x),
+      y: Number(y),
+      width: Number(width),
+      height: Number(height),
+    });
   }
 
   const editing = props.mode === "edit";
+  const maxX = props.mode === "create"
+    ? Math.max(0, props.boardBounds.width - (Number(width) || 0))
+    : undefined;
+  const maxY = props.mode === "create"
+    ? Math.max(0, props.boardBounds.height - (Number(height) || 0))
+    : undefined;
 
   return (
     <dialog ref={dialogRef} className="create-modal" aria-labelledby="create-title"
@@ -77,21 +91,38 @@ export function CreateNoteModal(props: Props) {
               </div>
             </fieldset>
             {!editing && (
+              <fieldset className="create-modal__dimensions">
+                <legend>Note size (px)</legend>
+                <label htmlFor="note-width">Width
+                  <input id="note-width" type="number" min="48"
+                    max={props.mode === "create" ? props.boardBounds.width : undefined}
+                    step="any" required value={width} onChange={(event) => setWidth(event.target.value)} />
+                </label>
+                <label htmlFor="note-height">Height
+                  <input id="note-height" type="number" min="48"
+                    max={props.mode === "create" ? props.boardBounds.height : undefined}
+                    step="any" required value={height} onChange={(event) => setHeight(event.target.value)} />
+                </label>
+              </fieldset>
+            )}
+            {!editing && (
               <fieldset className="create-modal__position">
                 <legend>Position on board (px)</legend>
                 <label htmlFor="note-x">X
-                  <input id="note-x" type="number" min="0" max={props.mode === "create" ? props.maxX : undefined}
+                  <input id="note-x" type="number" min="0" max={maxX}
                     step="any" required value={x} onChange={(event) => setX(event.target.value)} />
                 </label>
                 <label htmlFor="note-y">Y
-                  <input id="note-y" type="number" min="0" max={props.mode === "create" ? props.maxY : undefined}
+                  <input id="note-y" type="number" min="0" max={maxY}
                     step="any" required value={y} onChange={(event) => setY(event.target.value)} />
                 </label>
               </fieldset>
             )}
           </div>
           <section className="create-modal__preview" aria-label="Note preview">
-            <span className="create-modal__preview-label">PREVIEW</span>
+            <span className="create-modal__preview-label">
+              PREVIEW{!editing && ` · ${width || 0} × ${height || 0} px`}
+            </span>
             <div className="note-preview" style={{ backgroundColor: color }}>
               <p>{content || "Your next idea starts here."}</p>
             </div>
