@@ -10,6 +10,32 @@ export type NoteGeometry = {
 export type NoteDraft = { content: string; color: NoteColor };
 export type Note = NoteGeometry & NoteDraft & { id: string };
 
+export const NOTES_STORAGE_KEY = "sticky-notes:notes";
+
+export function isNote(value: unknown): value is Note {
+  if (typeof value !== "object" || value === null) return false;
+  const note = value as Record<string, unknown>;
+  return typeof note.id === "string" &&
+    typeof note.content === "string" &&
+    typeof note.color === "string" &&
+    Number.isFinite(note.x) && Number.isFinite(note.y) &&
+    Number.isFinite(note.width) && Number.isFinite(note.height) &&
+    (note.color === "#f9e9a2" || note.color === "#ffd4b8" || note.color === "#f7cbd7" ||
+      note.color === "#ded2f5" || note.color === "#c8e3fa" || note.color === "#c8ebda" ||
+      note.color === "#dce6bd" || note.color === "#eadcc7");
+}
+
+export function loadNotes(): Note[] {
+  try {
+    const stored = window.localStorage.getItem(NOTES_STORAGE_KEY);
+    if (stored === null) return [];
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) && parsed.every(isNote) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export type NotesAction =
   | { type: "note/created"; note: Note }
   | { type: "note/geometryCommitted"; id: string; geometry: NoteGeometry }

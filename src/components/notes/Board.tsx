@@ -1,6 +1,6 @@
-import { useCallback, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { notesReducer } from "../../model/notes.reducer";
-import { NoteDraft, NoteGeometry } from "../../model/notes.types";
+import { loadNotes, NOTES_STORAGE_KEY, NoteDraft, NoteGeometry } from "../../model/notes.types";
 import { StickyNote } from "./StickyNote";
 import { TrashZone } from "./TrashZone";
 import { CreateNoteModal } from "./CreateNoteModal";
@@ -10,13 +10,27 @@ import "./Board.css";
 type ModalState = { type: "create" } | { type: "edit"; noteId: string };
 
 export function Board() {
-  const [notes, dispatch] = useReducer(notesReducer, []);
+  const [notes, dispatch] = useReducer(notesReducer, undefined, loadNotes);
+  const persistedNotesRef = useRef(notes);
   const boardRef = useRef<HTMLDivElement>(null);
   const trashRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [trashActive, setTrashActive] = useState(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const interactionLockRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (notes === persistedNotesRef.current) return;
+    const timeoutId = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
+        persistedNotesRef.current = notes;
+      } catch {
+        // Storage can be unavailable or full; keep the in-memory board usable.
+      }
+    }, 1000);
+    return () => window.clearTimeout(timeoutId);
+  }, [notes]);
 
   const commitGeometry = useCallback((id: string, geometry: NoteGeometry) => {
     dispatch({ type: "note/geometryCommitted", id, geometry });
