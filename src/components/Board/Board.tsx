@@ -14,7 +14,9 @@ import { SavingFeedback } from "../common/SavingFeedback";
 import { getInitialGeometry } from "../../utils/geometry";
 import "./Board.css";
 
-type ModalState = { type: "create" } | { type: "edit"; noteId: string };
+type ModalState =
+  | { type: "create"; geometry: NoteGeometry; maxX: number; maxY: number }
+  | { type: "edit"; noteId: string };
 
 export function Board() {
   const [initialSnapshot] = useState(loadNotesSnapshot);
@@ -72,19 +74,32 @@ export function Board() {
       setModal({ type: "edit", noteId: id });
   }, []);
 
-  function createNote(draft: NoteDraft) {
+  function openCreate() {
+    const board = boardRef.current;
+    if (!board || interactionLockRef.current !== null) return;
+    const bounds = { width: board.clientWidth, height: board.clientHeight };
+    const geometry = getInitialGeometry(window.innerHeight, bounds, notes);
+    setModal({
+      type: "create",
+      geometry,
+      maxX: bounds.width - geometry.width,
+      maxY: bounds.height - geometry.height,
+    });
+  }
+
+  function createNote(draft: NoteDraft & Pick<NoteGeometry, "x" | "y">) {
     const board = boardRef.current;
     if (!board) return;
+    const bounds = { width: board.clientWidth, height: board.clientHeight };
+    const geometry = getInitialGeometry(window.innerHeight, bounds, notes);
     dispatch({
       type: "note/created",
       note: {
         id: crypto.randomUUID(),
         ...draft,
-        ...getInitialGeometry(
-          window.innerHeight,
-          { width: board.clientWidth, height: board.clientHeight },
-          notes,
-        ),
+        ...geometry,
+        x: Math.max(0, Math.min(draft.x, bounds.width - geometry.width)),
+        y: Math.max(0, Math.min(draft.y, bounds.height - geometry.height)),
       },
     });
     setModal(null);
@@ -121,8 +136,7 @@ export function Board() {
                 type="button"
                 className="create-note-button"
                 onClick={() => {
-                  if (interactionLockRef.current === null)
-                    setModal({ type: "create" });
+                  openCreate();
                 }}
               >
                 ＋ New note
@@ -156,6 +170,9 @@ export function Board() {
       {modal?.type === "create" && (
         <CreateNoteModal
           mode="create"
+          initialGeometry={modal.geometry}
+          maxX={modal.maxX}
+          maxY={modal.maxY}
           onCreate={createNote}
           onClose={() => setModal(null)}
         />

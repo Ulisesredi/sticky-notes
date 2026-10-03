@@ -1,9 +1,16 @@
 import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { NOTE_COLORS, NoteColor } from "../../model/notes.colors";
-import { Note, NoteDraft } from "../../model/notes.types";
+import { Note, NoteDraft, NoteGeometry } from "../../model/notes.types";
 import "./CreateNoteModal.css";
 
-type CreateProps = { mode: "create"; onCreate: (draft: NoteDraft) => void; onClose: () => void };
+type CreateProps = {
+  mode: "create";
+  initialGeometry: NoteGeometry;
+  maxX: number;
+  maxY: number;
+  onCreate: (draft: NoteDraft & Pick<NoteGeometry, "x" | "y">) => void;
+  onClose: () => void;
+};
 type EditProps = { mode: "edit"; note: Note; onSave: (id: string, draft: NoteDraft) => void; onClose: () => void };
 type Props = CreateProps | EditProps;
 
@@ -14,6 +21,8 @@ export function CreateNoteModal(props: Props) {
   const [color, setColor] = useState<NoteColor>(() =>
     props.mode === "edit" ? props.note.color : NOTE_COLORS[0].value
   );
+  const [x, setX] = useState(() => props.mode === "create" ? String(props.initialGeometry.x) : "");
+  const [y, setY] = useState(() => props.mode === "create" ? String(props.initialGeometry.y) : "");
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -29,7 +38,7 @@ export function CreateNoteModal(props: Props) {
     if (!normalizedContent) return;
     const draft = { content: normalizedContent, color };
     if (props.mode === "edit") props.onSave(props.note.id, draft);
-    else props.onCreate(draft);
+    else props.onCreate({ ...draft, x: Number(x), y: Number(y) });
   }
 
   const editing = props.mode === "edit";
@@ -67,6 +76,19 @@ export function CreateNoteModal(props: Props) {
                 ))}
               </div>
             </fieldset>
+            {!editing && (
+              <fieldset className="create-modal__position">
+                <legend>Position on board (px)</legend>
+                <label htmlFor="note-x">X
+                  <input id="note-x" type="number" min="0" max={props.mode === "create" ? props.maxX : undefined}
+                    step="any" required value={x} onChange={(event) => setX(event.target.value)} />
+                </label>
+                <label htmlFor="note-y">Y
+                  <input id="note-y" type="number" min="0" max={props.mode === "create" ? props.maxY : undefined}
+                    step="any" required value={y} onChange={(event) => setY(event.target.value)} />
+                </label>
+              </fieldset>
+            )}
           </div>
           <section className="create-modal__preview" aria-label="Note preview">
             <span className="create-modal__preview-label">PREVIEW</span>
