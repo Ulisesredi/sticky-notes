@@ -1,0 +1,31 @@
+.trash-zone {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  width: 200px;
+  height: 116px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border: 2px dashed #a8afa0;
+  border-radius: 12px;
+  color: #63705c;
+  background: #f4f5eef0;
+  pointer-events: none;
+  user-select: none;
+}
+.trash-zone strong { font-size: 13px; }
+.trash-zone span { font-size: 11px; }
+.trash-zone[data-active] {
+  border-color: #b44536;
+  background: #fce7e1;
+  color: #923529;
+  box-shadow: 0 0 0 4px #b4453618;
+}
+.sticky-note[data-delete-ready] {
+  outline-color: #b44536;
+  opacity: 0.7;
+}
