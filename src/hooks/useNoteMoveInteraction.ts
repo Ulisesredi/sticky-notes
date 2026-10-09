@@ -1,62 +1,37 @@
-import {
-  PointerEvent as ReactPointerEvent,
-  RefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-} from "react";
+import { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { Note, NoteGeometry } from "../model/notes.types";
-import { getGestureGeometry, InteractionKind, isPointInRect } from "../utils/geometry";
+import { getGestureGeometry, isPointInRect } from "../utils/geometry";
+import { CancelGestureRef, NoteElementRef, paintNoteGeometry } from "./useNoteElement";
 
 type Options = {
   note: Note;
+  noteRef: NoteElementRef;
   boardRef: RefObject<HTMLDivElement | null>;
   trashRef: RefObject<HTMLDivElement | null>;
   viewportRef: RefObject<HTMLDivElement | null>;
-  onTrashChange: (active: boolean) => void;
+  cancelGestureRef: CancelGestureRef;
   interactionLockRef: RefObject<string | null>;
+  onTrashChange: (active: boolean) => void;
   onCommit: (id: string, geometry: NoteGeometry) => void;
   onDelete: (id: string) => void;
 };
 
-function paint(element: HTMLElement, geometry: NoteGeometry) {
-  element.style.transform = `translate(${geometry.x}px, ${geometry.y}px)`;
-  element.style.width = `${geometry.width}px`;
-  element.style.height = `${geometry.height}px`;
-}
-
-export function useNoteInteraction({
+export function useNoteMoveInteraction({
   note,
+  noteRef,
   boardRef,
   trashRef,
   viewportRef,
-  onTrashChange,
+  cancelGestureRef,
   interactionLockRef,
+  onTrashChange,
   onCommit,
   onDelete,
 }: Options) {
-  const noteRef = useRef<HTMLElement>(null);
-  const cancelRef = useRef<(() => void) | null>(null);
   const { x, y, width, height } = note;
 
-  // This hook owns geometry styles, both during gestures and after React commits.
-  useLayoutEffect(() => {
-    cancelRef.current?.();
-    if (noteRef.current) paint(noteRef.current, { x, y, width, height });
-  }, [x, y, width, height]);
-
-  useEffect(() => () => cancelRef.current?.(), []);
-
-  function start(
-    event: ReactPointerEvent<HTMLButtonElement>,
-    kind: InteractionKind,
-  ) {
-    if (
-      event.button !== 0 ||
-      !event.isPrimary ||
-      interactionLockRef.current !== null
-    )
-      return;
+  function startMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0 || !event.isPrimary || interactionLockRef.current !== null) return;
     const element = noteRef.current;
     const board = boardRef.current;
     if (!element || !board) return;
@@ -67,10 +42,10 @@ export function useNoteInteraction({
     handle.focus({ preventScroll: true });
     const pointerId = event.pointerId;
     const initial: NoteGeometry = { x, y, width, height };
-    const rect = board.getBoundingClientRect();
+    const initialBoardRect = board.getBoundingClientRect();
     const origin = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      x: event.clientX - initialBoardRect.left,
+      y: event.clientY - initialBoardRect.top,
     };
     const bounds = { width: board.clientWidth, height: board.clientHeight };
     let pointer = { x: event.clientX, y: event.clientY };
@@ -78,12 +53,19 @@ export function useNoteInteraction({
     let finished = false;
     let overTrash = false;
 
+    function geometry() {
+      const currentBoardRect = board!.getBoundingClientRect();
+      return getGestureGeometry(initial, "move", {
+        x: pointer.x - currentBoardRect.left - origin.x,
+        y: pointer.y - currentBoardRect.top - origin.y,
+      }, bounds);
+    }
+
     function isOverTrash() {
       const trash = trashRef.current;
       const viewport = viewportRef.current;
-      if (kind !== "move" || !trash || !viewport) return false;
+      if (!trash || !viewport) return false;
       const viewportRect = viewport.getBoundingClientRect();
-      // Exclude clipped content, borders, and scrollbars from the drop target.
       const visibleArea = {
         left: viewportRect.left + viewport.clientLeft,
         top: viewportRect.top + viewport.clientTop,
@@ -102,19 +84,6 @@ export function useNoteInteraction({
       onTrashChange(active);
     }
 
-    function geometry() {
-      const currentRect = board!.getBoundingClientRect();
-      return getGestureGeometry(
-        initial,
-        kind,
-        {
-          x: pointer.x - currentRect.left - origin.x,
-          y: pointer.y - currentRect.top - origin.y,
-        },
-        bounds,
-      );
-    }
-
     function finish(commit: boolean) {
       if (finished) return;
       finished = true;
@@ -131,39 +100,30 @@ export function useNoteInteraction({
       window.removeEventListener("resize", cancel);
       window.removeEventListener("scroll", schedule, true);
       document.removeEventListener("visibilitychange", visibility);
-      cancelRef.current = null;
+      cancelGestureRef.current = null;
       interactionLockRef.current = null;
       delete element!.dataset.interacting;
-      if (handle.hasPointerCapture(pointerId))
-        handle.releasePointerCapture(pointerId);
-      // Keep the final pixels in place until the committed layout effect runs.
-      paint(element!, finalGeometry);
+      if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+      paintNoteGeometry(element!, finalGeometry);
       if (shouldDelete) onDelete(note.id);
       else if (commit) onCommit(note.id, finalGeometry);
     }
 
-    function cancel() {
-      finish(false);
-    }
+    function cancel() { finish(false); }
     function keydown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
         cancel();
       }
     }
-    function visibility() {
-      if (document.hidden) cancel();
-    }
+    function visibility() { if (document.hidden) cancel(); }
     function schedule() {
       if (frame !== null || finished) return;
       frame = requestAnimationFrame(() => {
         frame = null;
-        if (!finished) {
-          const nextGeometry = geometry();
-          const nextOverTrash = isOverTrash();
-          paint(element!, nextGeometry);
-          updateTrashFeedback(nextOverTrash);
-        }
+        if (finished) return;
+        paintNoteGeometry(element!, geometry());
+        updateTrashFeedback(isOverTrash());
       });
     }
     function move(e: PointerEvent) {
@@ -178,13 +138,12 @@ export function useNoteInteraction({
     function up(e: PointerEvent) {
       if (e.pointerId !== pointerId) return;
       pointer = { x: e.clientX, y: e.clientY };
-      // Use pointerup coordinates even if the last animation frame hasn't run.
       finish(true);
     }
 
     interactionLockRef.current = note.id;
-    cancelRef.current = cancel;
-    element.dataset.interacting = kind;
+    cancelGestureRef.current = cancel;
+    element.dataset.interacting = "move";
     handle.addEventListener("pointermove", move);
     handle.addEventListener("pointerup", up);
     handle.addEventListener("pointercancel", cancel);
@@ -202,5 +161,5 @@ export function useNoteInteraction({
     }
   }
 
-  return { noteRef, start };
+  return { startMove };
 }

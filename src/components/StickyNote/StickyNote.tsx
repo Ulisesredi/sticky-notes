@@ -1,5 +1,7 @@
-import { memo, RefObject } from "react";
-import { useNoteInteraction } from "../../hooks/useNoteInteraction";
+import { memo, RefObject, useRef } from "react";
+import { useNoteElement } from "../../hooks/useNoteElement";
+import { useNoteMoveInteraction } from "../../hooks/useNoteMoveInteraction";
+import { useNoteResizeInteraction } from "../../hooks/useNoteResizeInteraction";
 import { Note, NoteGeometry } from "../../model/notes.types";
 import "./StickyNote.css";
 
@@ -21,9 +23,14 @@ export const StickyNote = memo(function StickyNote({
   note, number, boardRef, trashRef, viewportRef, onTrashChange,
   interactionLockRef, onCommit, onDelete, onEdit, onSelect,
 }: Props) {
-  const { noteRef, start } = useNoteInteraction({
-    note, boardRef, trashRef, viewportRef, onTrashChange,
-    onDelete, interactionLockRef, onCommit,
+  const cancelGestureRef = useRef<(() => void) | null>(null);
+  const noteRef = useNoteElement(note, cancelGestureRef);
+  const { startMove } = useNoteMoveInteraction({
+    note, noteRef, boardRef, trashRef, viewportRef, onTrashChange,
+    interactionLockRef, onCommit, onDelete, cancelGestureRef,
+  });
+  const { startResize } = useNoteResizeInteraction({
+    note, noteRef, boardRef, interactionLockRef, onCommit, cancelGestureRef,
   });
 
   return (
@@ -34,7 +41,7 @@ export const StickyNote = memo(function StickyNote({
       <header className="sticky-note__header">
         <button type="button" className="sticky-note__move"
           aria-label={`Move note ${number}` } title="Drag to move. Press Escape to cancel."
-          onPointerDown={(event) => start(event, "move")}>
+          onPointerDown={startMove}>
           <span aria-hidden="true">⠿</span>
         </button>
         <button type="button" className="sticky-note__edit"
@@ -44,7 +51,7 @@ export const StickyNote = memo(function StickyNote({
       <div className="sticky-note__body"><p>{note.content}</p></div>
       <button type="button" className="sticky-note__resize"
         aria-label={`Resize note ${number}` } title="Drag to resize. Press Escape to cancel."
-        onPointerDown={(event) => start(event, "resize")}>
+        onPointerDown={startResize}>
         <span aria-hidden="true">↘</span>
       </button>
     </article>

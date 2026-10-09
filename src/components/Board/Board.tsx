@@ -7,16 +7,14 @@ import {
   NoteGeometry,
 } from "../../model/notes.types";
 import { saveNotesToMockApi } from "../../services/notesApi";
+import { useNoteCreation } from "../../hooks/useNoteCreation";
 import { StickyNote } from "../StickyNote/StickyNote";
 import { TrashZone } from "../TrashZone/TrashZone";
 import { CreateNoteModal } from "../CreateNoteModal/CreateNoteModal";
 import { SavingFeedback } from "../common/SavingFeedback";
-import { getInitialGeometry, MIN_NOTE_SIZE, Size } from "../../utils/geometry";
 import "./Board.css";
 
-type ModalState =
-  | { type: "create"; geometry: NoteGeometry; bounds: Size }
-  | { type: "edit"; noteId: string };
+type ModalState = { type: "edit"; noteId: string };
 
 export function Board() {
   const [initialSnapshot] = useState(loadNotesSnapshot);
@@ -31,6 +29,12 @@ export function Board() {
   const [isSaving, setIsSaving] = useState(false);
   const pendingSavesRef = useRef(0);
   const interactionLockRef = useRef<string | null>(null);
+  const noteCreation = useNoteCreation({
+    boardRef,
+    interactionLockRef,
+    notes,
+    dispatch,
+  });
 
   useEffect(() => {
     if (notes === persistedNotesRef.current) return;
@@ -74,40 +78,6 @@ export function Board() {
       setModal({ type: "edit", noteId: id });
   }, []);
 
-  function openCreate() {
-    const board = boardRef.current;
-    if (!board || interactionLockRef.current !== null) return;
-    const bounds = { width: board.clientWidth, height: board.clientHeight };
-    const geometry = getInitialGeometry(window.innerHeight, bounds, notes);
-    setModal({
-      type: "create",
-      geometry,
-      bounds,
-    });
-  }
-
-  function createNote(draft: NoteDraft & NoteGeometry) {
-    const board = boardRef.current;
-    if (!board) return;
-    const bounds = { width: board.clientWidth, height: board.clientHeight };
-    const minWidth = Math.min(MIN_NOTE_SIZE.width, bounds.width);
-    const minHeight = Math.min(MIN_NOTE_SIZE.height, bounds.height);
-    const width = Math.min(Math.max(draft.width, minWidth), bounds.width);
-    const height = Math.min(Math.max(draft.height, minHeight), bounds.height);
-    dispatch({
-      type: "note/created",
-      note: {
-        id: crypto.randomUUID(),
-        ...draft,
-        width,
-        height,
-        x: Math.max(0, Math.min(draft.x, bounds.width - width)),
-        y: Math.max(0, Math.min(draft.y, bounds.height - height)),
-      },
-    });
-    setModal(null);
-  }
-
   function updateNote(id: string, draft: NoteDraft) {
     dispatch({ type: "note/contentUpdated", id, draft });
     setModal(null);
@@ -139,7 +109,7 @@ export function Board() {
                 type="button"
                 className="create-note-button"
                 onClick={() => {
-                  openCreate();
+                  noteCreation.open();
                 }}
               >
                 ＋ New note
@@ -170,13 +140,13 @@ export function Board() {
           <TrashZone zoneRef={trashRef} active={trashActive} />
         </div>
       </div>
-      {modal?.type === "create" && (
+      {noteCreation.dialog && (
         <CreateNoteModal
           mode="create"
-          initialGeometry={modal.geometry}
-          boardBounds={modal.bounds}
-          onCreate={createNote}
-          onClose={() => setModal(null)}
+          initialGeometry={noteCreation.dialog.initialGeometry}
+          boardBounds={noteCreation.dialog.boardBounds}
+          onCreate={noteCreation.create}
+          onClose={noteCreation.close}
         />
       )}
       {editedNote && (

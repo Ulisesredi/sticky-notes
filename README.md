@@ -29,7 +29,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 The application is built with React and TypeScript. The `Board` component owns the list of notes and updates it through a reducer. Each note stores its text, color, position, and size. The board also coordinates creation, editing, deletion, saving, and the shared saving indicator.
 
-The interface is split into small components for the board, notes, the creation and editing dialog, the trash area, and shared feedback. A dedicated interaction hook handles dragging and resizing. While a pointer gesture is active, it updates the note's visual position directly; when the gesture ends, it commits the final geometry to React state. This keeps frequent pointer movement from causing unnecessary component updates.
+The interface is split into small components for the board, notes, the creation and editing dialog, the trash area, and shared feedback. Separate hooks handle note movement, resizing, and creation. During movement and resizing, temporary geometry is kept in refs and applied directly to the note element; when the gesture ends, the final geometry is committed to React state. This keeps frequent pointer movement from causing unnecessary component updates and leaves creation logic ready to support additional interaction patterns.
 
 Geometry calculations live in standalone utilities. Confirmed changes are saved to browser storage and sent to the mock API after a one-second debounce. Both destinations receive the same incrementing version, allowing the mock API to ignore older updates that arrive late. The local copy survives a page reload; the mock API's in-memory copy does not.
 
