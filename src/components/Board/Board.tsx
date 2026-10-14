@@ -1,13 +1,14 @@
-import { useCallback, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { notesReducer } from "../../model/notes.reducer";
-import { loadNotesSnapshot, NoteGeometry } from "../../model/notes.types";
+import { loadNotesSnapshot, Note, NoteGeometry } from "../../model/notes.types";
 import { StickyNote } from "../StickyNote/StickyNote";
 import { TrashZone } from "../TrashZone/TrashZone";
 import { CreateNoteModal } from "../CreateNoteModal/CreateNoteModal";
-import { SavingFeedback } from "../common/SavingFeedback";
+import { SavingFeedback } from "../Common/SavingFeedback";
 import "./Board.css";
 import { useNotePersistence } from "../../hooks/useNotePersistence";
 import { useCreateNote } from "../../hooks/useCreateNote";
+import { UndoDeleteFeedback } from "../Common/UndoDeleteFeedback";
 
 export function Board() {
   const [initialSnapshot] = useState(loadNotesSnapshot);
@@ -22,13 +23,54 @@ export function Board() {
 
   const isSaving = useNotePersistence(notes, initialSnapshot.version);
 
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deletedNote, setDeletedNote] = useState<Note | undefined>();
+  const stableNotes = useRef<Note[]>(initialSnapshot.notes);
+
+  useEffect(() => {
+    stableNotes.current = notes;
+  }, [notes]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   const commitGeometry = useCallback((id: string, geometry: NoteGeometry) => {
     dispatch({ type: "note/geometryCommitted", id, geometry });
   }, []);
   const deleteNote = useCallback((id: string) => {
     if (interactionLockRef.current !== null) return;
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    const deleted = stableNotes.current.find((it) => it.id === id);
+    setDeletedNote(deleted);
+
+    const timeoutId = setTimeout(() => {
+      setDeletedNote(undefined);
+      timerRef.current = null;
+    }, 5000);
+
+    timerRef.current = timeoutId;
+
     dispatch({ type: "note/deleted", id });
   }, []);
+
+  const restoreNote = useCallback(() => {
+    if (deletedNote) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      dispatch({ type: "note/restored", note: deletedNote });
+
+      setDeletedNote(undefined);
+    }
+  }, [deletedNote]);
+
   const bringToFront = useCallback((id: string) => {
     if (interactionLockRef.current === null)
       dispatch({ type: "note/broughtToFront", id });
@@ -112,6 +154,7 @@ export function Board() {
         />
       )}
       {isSaving && <SavingFeedback />}
+      {deletedNote && <UndoDeleteFeedback onRestoreNote={restoreNote} />}
     </main>
   );
 }
