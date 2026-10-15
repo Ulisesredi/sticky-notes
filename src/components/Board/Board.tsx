@@ -9,6 +9,7 @@ import "./Board.css";
 import { useNotePersistence } from "../../hooks/useNotePersistence";
 import { useCreateNote } from "../../hooks/useCreateNote";
 import { UndoDeleteFeedback } from "../Common/UndoDeleteFeedback";
+import { useDrawCreate } from "../../hooks/useDrawCreate";
 
 export function Board() {
   const [initialSnapshot] = useState(loadNotesSnapshot);
@@ -79,6 +80,19 @@ export function Board() {
   const { updateNote, createNote, openModal, closeModal, modal } =
     useCreateNote({ interactionLockRef, boardRef, dispatch, notes });
 
+  const commitDrawnGeometry = useCallback(
+    (drawnGeometry: NoteGeometry) => {
+      openModal({ type: "create", initial: drawnGeometry });
+    },
+    [openModal],
+  );
+
+  const { previewRef, startDrawCreation } = useDrawCreate({
+    interactionLockRef,
+    boardRef,
+    commitDrawnGeometry,
+  });
+
   const editedNote =
     modal?.type === "edit"
       ? notes.find((note) => note.id === modal.noteId)
@@ -92,7 +106,7 @@ export function Board() {
         role="region"
         aria-label="Notes board"
       >
-        <div ref={boardRef} className="board">
+        <div ref={boardRef} className="board" onPointerDown={startDrawCreation}>
           <header className="workspace__header">
             <h1>
               Sticky notes<span>.</span>
@@ -134,6 +148,7 @@ export function Board() {
             </footer>
           )}
           <TrashZone zoneRef={trashRef} active={trashActive} />
+          <div className="drawn-preview" ref={previewRef} />
         </div>
       </div>
       {modal?.type === "create" && (

@@ -6,7 +6,7 @@ export type InteractionKind = "move" | "resize";
 
 export const MIN_NOTE_SIZE: Size = { width: 48, height: 48 };
 
-const clamp = (value: number, min: number, max: number) =>
+export const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
 export function isValidGeometry(geometry: NoteGeometry, bounds: Size): boolean {
@@ -69,13 +69,21 @@ export function getInitialGeometry(
   const startX = Math.min(16, Math.max(0, bounds.width - size));
   const startY = Math.min(72, Math.max(0, bounds.height - size));
   const step = Math.min(48, Math.max(24, size * 0.22));
-  const columns = Math.max(1, Math.floor((bounds.width - size - startX) / step) + 1);
-  const rows = Math.max(1, Math.floor((bounds.height - size - startY) / step) + 1);
+  const columns = Math.max(
+    1,
+    Math.floor((bounds.width - size - startX) / step) + 1,
+  );
+  const rows = Math.max(
+    1,
+    Math.floor((bounds.height - size - startY) / step) + 1,
+  );
   const occupiedPositions = new Set(occupied.map(({ x, y }) => `${x}:${y}`));
   let slot = 0;
   while (
     slot < columns * rows &&
-    occupiedPositions.has(`${startX + (slot % columns) * step}:${startY + Math.floor(slot / columns) * step}`)
+    occupiedPositions.has(
+      `${startX + (slot % columns) * step}:${startY + Math.floor(slot / columns) * step}`,
+    )
   ) {
     slot += 1;
   }

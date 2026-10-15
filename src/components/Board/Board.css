@@ -41,7 +41,9 @@
   color: #52614a;
   text-shadow: 0 1px 4px #eceee4;
 }
-.workspace h1 span { color: #798461; }
+.workspace h1 span {
+  color: #798461;
+}
 .workspace__count {
   color: #63705c;
   font-size: 12px;
@@ -61,7 +63,11 @@
   user-select: none;
 }
 
-.workspace__tools { display: flex; align-items: center; gap: 16px; }
+.workspace__tools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 .create-note-button {
   pointer-events: auto;
   border: 0;
@@ -73,5 +79,11 @@
   cursor: pointer;
   box-shadow: 0 3px 10px #2536241a;
 }
-.create-note-button:hover { background: #263c2c; }
+.create-note-button:hover {
+  background: #263c2c;
+}
 
+.drawn-preview {
+  position: absolute;
+  background: #dbded1;
+}
