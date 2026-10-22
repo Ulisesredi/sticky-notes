@@ -12,17 +12,28 @@ export function notesReducer(state: Note[], action: NotesAction): Note[] {
       const current = state[index];
       const next = action.geometry;
       if (
-        current.x === next.x && current.y === next.y &&
-        current.width === next.width && current.height === next.height
-      ) return state;
-      return state.map((note, i) => i === index ? { ...note, ...next } : note);
+        current.x === next.x &&
+        current.y === next.y &&
+        current.width === next.width &&
+        current.height === next.height
+      )
+        return state;
+      return state.map((note, i) =>
+        i === index ? { ...note, ...next } : note,
+      );
     }
     case "note/contentUpdated": {
       const index = state.findIndex((note) => note.id === action.id);
       if (index === -1) return state;
       const current = state[index];
-      if (current.content === action.draft.content && current.color === action.draft.color) return state;
-      return state.map((note, i) => i === index ? { ...note, ...action.draft } : note);
+      if (
+        current.content === action.draft.content &&
+        current.color === action.draft.color
+      )
+        return state;
+      return state.map((note, i) =>
+        i === index ? { ...note, ...action.draft } : note,
+      );
     }
     case "note/broughtToFront": {
       const index = state.findIndex((note) => note.id === action.id);
@@ -33,5 +44,10 @@ export function notesReducer(state: Note[], action: NotesAction): Note[] {
       return state.some((note) => note.id === action.id)
         ? state.filter((note) => note.id !== action.id)
         : state;
+
+    case "note/restored":
+      return state.some((note) => note.id === action.note.id)
+        ? state
+        : [...state, action.note];
   }
 }

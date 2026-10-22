@@ -1,0 +1,54 @@
+.undo-status {
+  position: fixed;
+  right: 18px;
+  bottom: 64px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid #d9dfd4;
+  border-radius: 999px;
+  background: #fffefa;
+  color: #354431;
+  box-shadow: 0 6px 20px #26362424;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.undo-status__message {
+  line-height: 1.2;
+}
+
+.undo-status__undo {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #52614a;
+  color: #fffefa;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    transform 140ms ease;
+}
+
+.undo-status__undo:hover {
+  background: #3f4c39;
+}
+
+.undo-status__undo:active {
+  transform: scale(0.97);
+}
+
+.undo-status__undo:focus-visible {
+  outline: 3px solid #a7bd91;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .undo-status__undo {
+    transition: none;
+  }
+}

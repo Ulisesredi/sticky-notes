@@ -16,14 +16,23 @@ export const NOTES_STORAGE_KEY = "sticky-notes:notes";
 export function isNote(value: unknown): value is Note {
   if (typeof value !== "object" || value === null) return false;
   const note = value as Record<string, unknown>;
-  return typeof note.id === "string" &&
+  return (
+    typeof note.id === "string" &&
     typeof note.content === "string" &&
     typeof note.color === "string" &&
-    Number.isFinite(note.x) && Number.isFinite(note.y) &&
-    Number.isFinite(note.width) && Number.isFinite(note.height) &&
-    (note.color === "#f9e9a2" || note.color === "#ffd4b8" || note.color === "#f7cbd7" ||
-      note.color === "#ded2f5" || note.color === "#c8e3fa" || note.color === "#c8ebda" ||
-      note.color === "#dce6bd" || note.color === "#eadcc7");
+    Number.isFinite(note.x) &&
+    Number.isFinite(note.y) &&
+    Number.isFinite(note.width) &&
+    Number.isFinite(note.height) &&
+    (note.color === "#f9e9a2" ||
+      note.color === "#ffd4b8" ||
+      note.color === "#f7cbd7" ||
+      note.color === "#ded2f5" ||
+      note.color === "#c8e3fa" ||
+      note.color === "#c8ebda" ||
+      note.color === "#dce6bd" ||
+      note.color === "#eadcc7")
+  );
 }
 
 export function loadNotesSnapshot(): NotesSnapshot {
@@ -36,8 +45,12 @@ export function loadNotesSnapshot(): NotesSnapshot {
     }
     if (typeof parsed === "object" && parsed !== null) {
       const snapshot = parsed as Record<string, unknown>;
-      if (Number.isInteger(snapshot.version) && (snapshot.version as number) >= 0 &&
-          Array.isArray(snapshot.notes) && snapshot.notes.every(isNote)) {
+      if (
+        Number.isInteger(snapshot.version) &&
+        (snapshot.version as number) >= 0 &&
+        Array.isArray(snapshot.notes) &&
+        snapshot.notes.every(isNote)
+      ) {
         return { version: snapshot.version as number, notes: snapshot.notes };
       }
     }
@@ -49,6 +62,7 @@ export function loadNotesSnapshot(): NotesSnapshot {
 
 export type NotesAction =
   | { type: "note/created"; note: Note }
+  | { type: "note/restored"; note: Note }
   | { type: "note/geometryCommitted"; id: string; geometry: NoteGeometry }
   | { type: "note/contentUpdated"; id: string; draft: NoteDraft }
   | { type: "note/broughtToFront"; id: string }
