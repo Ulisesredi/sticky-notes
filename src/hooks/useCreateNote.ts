@@ -27,7 +27,9 @@ export function useCreateNote({
   const [modal, setModal] = useState<ModalState | null>(null);
 
   function openModal(
-    mode: { type: "create" } | { type: "edit"; noteId: string },
+    mode:
+      | { type: "create"; initial?: NoteGeometry }
+      | { type: "edit"; noteId: string },
   ) {
     if (interactionLockRef.current === null) {
       if (mode.type === "edit") {
@@ -41,7 +43,8 @@ export function useCreateNote({
           width: board.clientWidth,
           height: board.clientHeight,
         };
-        const geometry = getInitialGeometry(window.innerHeight, bounds, notes);
+        const geometry =
+          mode.initial ?? getInitialGeometry(window.innerHeight, bounds, notes);
         setModal({
           type: "create",
           geometry,
